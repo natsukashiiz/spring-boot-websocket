@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/sockjs/1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+<h1>WebSocket Test</h1>
+<div id="greetings"></div>
+<label for="messageInput"></label>
+<input type="text" id="messageInput" placeholder="Enter your message here"/>
+<button onclick="sendMessage()">Send</button>
+
+<script type="text/javascript">
+    const socket = new SockJS('/ws');
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function (frame) {
+        console.log('Connected: ' + frame);
+        stompClient.subscribe('/topic/greetings', function (greeting) {
+            showGreeting(greeting.body);
+        });
+    });
+
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value;
+        stompClient.send("/app/hello", {}, JSON.stringify({'message': message}));
+        messageInput.value = '';
+    }
+
+    function showGreeting(message) {
+        const greetings = document.getElementById('greetings');
+        const p = document.createElement('p');
+        p.appendChild(document.createTextNode(message));
+        greetings.appendChild(p);
+    }
+</script>
+</body>
+</html>

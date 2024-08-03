@@ -1,0 +1,32 @@
+server:
+  port: 999
+  shutdown: graceful
+
+spring:
+  application:
+    name: spring-boot-websocket
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://sbws-mysql:5306/mydb?useSSL=false&serverTimezone=UTC
+    username: root
+    password: 1234
+  jpa:
+    show-sql: true
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    locations: classpath:db/migrations
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.springframework.web.servlet: DEBUG
+    com.natsukashiiz.sbws: DEBUG
