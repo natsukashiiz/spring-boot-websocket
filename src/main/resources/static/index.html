@@ -1,41 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>WebSocket Test</title>
     <script src="https://cdn.jsdelivr.net/sockjs/1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 </head>
 <body>
-<h1>WebSocket Test</h1>
-<div id="greetings"></div>
-<label for="messageInput"></label>
-<input type="text" id="messageInput" placeholder="Enter your message here"/>
-<button onclick="sendMessage()">Send</button>
+<div id="loginBox">
+    <input type="text" id="name" placeholder="Enter your name here"/>
+    <button onclick="login()">Login</button>
+</div>
+<div id="roomBox" style="display: none">
+</div>
+<div id="chatBox" style="display: none">
+    <h1 id="roomName"></h1>
+    <hr>
+    <div id="messages" style="max-height: 50dvh; overflow: scroll;"></div>
+    <hr>
+    <input type="text" id="messageInput" placeholder="Enter your message here"/>
+    <button onclick="sendMessage()">Send</button>
+</div>
 
 <script type="text/javascript">
     const socket = new SockJS('/ws');
     const stompClient = Stomp.over(socket);
+    let roomId = null;
+    let senderId = null;
+
+    const roomBox = document.getElementById('roomBox');
+    const messageInput = document.getElementById('messageInput');
+    const roomName = document.getElementById('roomName');
+    let messages = document.getElementById('messages');
+
+    // stompClient.debug = () => {};
 
     stompClient.connect({}, function (frame) {
-        console.log('Connected: ' + frame);
-        stompClient.subscribe('/topic/greetings', function (greeting) {
-            showGreeting(greeting.body);
-        });
+    }, function (error) {
+        console.error('WebSocket connection error: ', error);
     });
 
+    function getAllRooms() {
+        fetch('/v1/rooms')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(room => {
+                    const {id, name} = room;
+                    const div = document.createElement('div');
+                    div.appendChild(document.createTextNode(name));
+                    div.style.marginTop = '10px';
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'text');
+                    input.setAttribute('id', 'roomId');
+                    input.setAttribute('value', id);
+                    input.setAttribute('disabled', 'true');
+                    input.style.display = 'none';
+                    div.appendChild(input);
+                    const button = document.createElement('button');
+                    button.appendChild(document.createTextNode('Join'));
+                    button.onclick = subscribe.bind(null, room);
+                    button.style.marginLeft = '10px';
+                    div.appendChild(button);
+                    roomBox.appendChild(div);
+                });
+            });
+    }
+
+    function login() {
+        const name = document.getElementById('name').value;
+        fetch('/v1/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                'name': name
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                localStorage.setItem('user_id', data.id);
+                senderId = data.id;
+                document.getElementById('loginBox').style.display = 'none';
+                const roomBox = document.getElementById('roomBox');
+                roomBox.style.display = 'block';
+                getAllRooms();
+            });
+    }
+
+    function subscribe(room) {
+        roomBox.style.display = 'none';
+        roomId = room.id;
+        roomName.innerText = room.name;
+        const chatBox = document.getElementById('chatBox');
+        chatBox.style.display = 'block';
+
+        stompClient.subscribe(`/app/rooms/${roomId}`,
+            function (msg) {
+                JSON.parse(msg.body).forEach(message => {
+                    showMessages(message);
+                });
+            }, function (error) {
+                console.error("Error subscribing: ", error); // Log any error during subscription
+            });
+
+        stompClient.subscribe(`/topic/rooms/${roomId}`,
+            function (msg) {
+                showMessages(JSON.parse(msg.body));
+            },
+            function (error) {
+                console.error("Error subscribing: ", error); // Log any error during subscription
+            });
+    }
+
     function sendMessage() {
-        const messageInput = document.getElementById('messageInput');
         const message = messageInput.value;
-        stompClient.send("/app/hello", {}, JSON.stringify({'message': message}));
+        const data = JSON.stringify({
+            'senderId': senderId,
+            'roomId': roomId,
+            'message': message
+        })
+
+        fetch('/v1/messages/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: data
+        });
+
         messageInput.value = '';
     }
 
-    function showGreeting(message) {
-        const greetings = document.getElementById('greetings');
+    function showMessages(msg) {
+        const {message, senderId} = msg;
         const p = document.createElement('p');
-        p.appendChild(document.createTextNode(message));
-        greetings.appendChild(p);
+        p.appendChild(document.createTextNode(`user${senderId.id}: ${message}`));
+        messages.appendChild(p);
+        messages.scrollTop = messages.scrollHeight;
     }
+
+    function checkLogin() {
+        const userId = localStorage.getItem('user_id');
+        if (userId) {
+            senderId = userId;
+            document.getElementById('loginBox').style.display = 'none';
+            const roomBox = document.getElementById('roomBox');
+            roomBox.style.display = 'block';
+            getAllRooms();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        checkLogin();
+    })
 </script>
 </body>
 </html>
