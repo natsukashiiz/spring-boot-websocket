@@ -19,7 +19,7 @@ public class UserService {
     public TokenResponse login(LoginRequest request) {
         var userOptional = userRepository.findByName(request.name());
         if (userOptional.isEmpty()) {
-            var user = new User(null, request.name(), null, null, null);
+            var user = new User(null, request.name(), null, null, null, null);
             return createTokenResponse(userRepository.save(user));
         }
 

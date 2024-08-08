@@ -52,10 +52,9 @@ public class SecurityConfiguration implements WebMvcConfigurer {
                                         "/",
                                         "/error",
                                         "/index.html",
+                                        "/favicon.ico",
                                         "/ws/**",
-                                        "/v*/auth/**",
-                                        "/v1/rooms/**",
-                                        "/v1/messages/**"
+                                        "/v*/auth/**"
                                 )
                                 .permitAll()
 

@@ -47,35 +47,70 @@
             stompClient.subscribe('/topic/errors', function (msg) {
                 console.error('Error: ' + msg.body);
                 window.alert('Error: ' + msg.body);
-            });
+            }, headers);
         }, function (error) {
             console.error('Error: ' + error);
         });
     }
 
     function getAllRooms() {
-        fetch('/v1/rooms')
+        fetch('/v1/rooms', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
             .then(response => response.json())
             .then(data => {
-                data.forEach(room => {
-                    const {id, name} = room;
+                if (data.length === 0) {
                     const div = document.createElement('div');
-                    div.appendChild(document.createTextNode(name));
-                    div.style.marginTop = '10px';
-                    const input = document.createElement('input');
-                    input.setAttribute('type', 'text');
-                    input.setAttribute('id', 'roomId');
-                    input.setAttribute('value', id);
-                    input.setAttribute('disabled', 'true');
-                    input.style.display = 'none';
-                    div.appendChild(input);
-                    const button = document.createElement('button');
-                    button.appendChild(document.createTextNode('Join'));
-                    button.onclick = subscribe.bind(null, room);
-                    button.style.marginLeft = '10px';
-                    div.appendChild(button);
+                    div.appendChild(document.createTextNode('No rooms available'));
                     roomBox.appendChild(div);
-                });
+                } else {
+                    data.forEach(room => {
+                        const {id, name} = room;
+                        const div = document.createElement('div');
+                        div.appendChild(document.createTextNode(name));
+                        div.style.marginTop = '10px';
+                        const input = document.createElement('input');
+                        input.setAttribute('type', 'text');
+                        input.setAttribute('id', 'roomId');
+                        input.setAttribute('value', id);
+                        input.setAttribute('disabled', 'true');
+                        input.style.display = 'none';
+                        div.appendChild(input);
+                        const button = document.createElement('button');
+                        button.appendChild(document.createTextNode('Join'));
+                        button.onclick = subscribe.bind(null, room);
+                        button.style.marginLeft = '10px';
+                        div.appendChild(button);
+                        roomBox.appendChild(div);
+                    });
+                }
+            });
+    }
+
+    function getMessages() {
+        fetch(`/v1/rooms/${roomId}/messages`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    const p = document.createElement('p');
+                    p.appendChild(document.createTextNode('No messages available'));
+                    messages.appendChild(p);
+                } else {
+                    data.forEach(msg => {
+                        showMessages(msg);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error: ', error);
             });
     }
 
@@ -101,6 +136,11 @@
                 document.getElementById('loginBox').style.display = 'none';
                 const roomBox = document.getElementById('roomBox');
                 roomBox.style.display = 'block';
+
+                headers = {
+                    'Authorization': `Bearer ${token}`
+                }
+
                 getAllRooms();
                 connect();
             });
@@ -119,32 +159,34 @@
             },
             function (error) {
                 console.error("Error subscribing: ", error); // Log any error during subscription
-            }, headers);
+            }, {
+                'Authorization': `Bearer ${token}`
+            });
+
+        getMessages();
     }
 
     function sendMessage() {
         const message = messageInput.value;
-        const data = JSON.stringify({
-            senderId,
-            roomId,
-            message
-        })
 
-        fetch('/v1/messages/send', {
+        fetch(`/v1/rooms/${roomId}/messages`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
             },
-            body: data
+            body: JSON.stringify({
+                message
+            })
         });
 
         messageInput.value = '';
     }
 
     function showMessages(msg) {
-        const {message, senderId} = msg;
+        const {message, senderId, createdAt} = msg;
         const p = document.createElement('p');
-        p.appendChild(document.createTextNode(`user${senderId.id}: ${message}`));
+        p.appendChild(document.createTextNode(`user${senderId.id}: ${message} (${createdAt})`));
         messages.appendChild(p);
         messages.scrollTop = messages.scrollHeight;
     }
