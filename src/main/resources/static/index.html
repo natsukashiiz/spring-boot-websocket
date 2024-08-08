@@ -15,17 +15,19 @@
 <div id="chatBox" style="display: none">
     <h1 id="roomName"></h1>
     <hr>
-    <div id="messages" style="max-height: 50dvh; overflow: scroll;"></div>
+    <div id="messages" style="max-height: 50dvh; overflow-y: scroll;"></div>
     <hr>
     <input type="text" id="messageInput" placeholder="Enter your message here"/>
     <button onclick="sendMessage()">Send</button>
 </div>
 
 <script type="text/javascript">
-    const socket = new SockJS('/ws');
-    const stompClient = Stomp.over(socket);
+    let socket = null;
+    let stompClient = null;
     let roomId = null;
     let senderId = null;
+    let token = null;
+    let headers = null;
 
     const roomBox = document.getElementById('roomBox');
     const messageInput = document.getElementById('messageInput');
@@ -34,10 +36,22 @@
 
     // stompClient.debug = () => {};
 
-    stompClient.connect({}, function (frame) {
-    }, function (error) {
-        console.error('WebSocket connection error: ', error);
-    });
+    function connect() {
+        socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect(headers, function (frame) {
+            console.log('Connected: ' + frame);
+
+            // subscribe to the topic errors
+            stompClient.subscribe('/topic/errors', function (msg) {
+                console.error('Error: ' + msg.body);
+                window.alert('Error: ' + msg.body);
+            });
+        }, function (error) {
+            console.error('Error: ' + error);
+        });
+    }
 
     function getAllRooms() {
         fetch('/v1/rooms')
@@ -78,12 +92,17 @@
         })
             .then(response => response.json())
             .then(data => {
-                localStorage.setItem('user_id', data.id);
-                senderId = data.id;
+                localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('token', data.token);
+
+                senderId = data.user.id;
+                token = data.token;
+
                 document.getElementById('loginBox').style.display = 'none';
                 const roomBox = document.getElementById('roomBox');
                 roomBox.style.display = 'block';
                 getAllRooms();
+                connect();
             });
     }
 
@@ -94,30 +113,21 @@
         const chatBox = document.getElementById('chatBox');
         chatBox.style.display = 'block';
 
-        stompClient.subscribe(`/app/rooms/${roomId}`,
-            function (msg) {
-                JSON.parse(msg.body).forEach(message => {
-                    showMessages(message);
-                });
-            }, function (error) {
-                console.error("Error subscribing: ", error); // Log any error during subscription
-            });
-
         stompClient.subscribe(`/topic/rooms/${roomId}`,
             function (msg) {
                 showMessages(JSON.parse(msg.body));
             },
             function (error) {
                 console.error("Error subscribing: ", error); // Log any error during subscription
-            });
+            }, headers);
     }
 
     function sendMessage() {
         const message = messageInput.value;
         const data = JSON.stringify({
-            'senderId': senderId,
-            'roomId': roomId,
-            'message': message
+            senderId,
+            roomId,
+            message
         })
 
         fetch('/v1/messages/send', {
@@ -140,13 +150,20 @@
     }
 
     function checkLogin() {
-        const userId = localStorage.getItem('user_id');
-        if (userId) {
-            senderId = userId;
-            document.getElementById('loginBox').style.display = 'none';
-            const roomBox = document.getElementById('roomBox');
-            roomBox.style.display = 'block';
-            getAllRooms();
+        const tk = localStorage.getItem('token');
+        if (tk) {
+            token = tk;
+            const user = localStorage.getItem('user');
+            if (user) {
+                senderId = JSON.parse(user).id;
+                document.getElementById('loginBox').style.display = 'none';
+                document.getElementById('roomBox').style.display = 'block';
+                headers = {
+                    'Authorization': `Bearer ${token}`
+                }
+                getAllRooms();
+                connect();
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.natsukashiiz.sbws;
 
+import com.natsukashiiz.sbws.common.RoomType;
 import com.natsukashiiz.sbws.entity.Room;
 import com.natsukashiiz.sbws.entity.User;
 import com.natsukashiiz.sbws.repository.RoomRepository;
@@ -35,16 +36,8 @@ public class DevApplication implements ApplicationRunner {
         var roomCount = roomRepository.count();
         if (roomCount == 0) {
             roomRepository.saveAll(List.of(
-                    new Room(null, "room-one", null, null, null),
-                    new Room(null, "room-two", null, null, null),
-                    new Room(null, "room-three", null, null, null),
-                    new Room(null, "room-four", null, null, null),
-                    new Room(null, "room-five", null, null, null),
-                    new Room(null, "room-six", null, null, null),
-                    new Room(null, "room-seven", null, null, null),
-                    new Room(null, "room-eight", null, null, null),
-                    new Room(null, "room-nine", null, null, null),
-                    new Room(null, "room-ten", null, null, null)
+                    new Room(null, "room-friend", RoomType.Friend, null, null, null),
+                    new Room(null, "room-group", RoomType.Group, null, null, null)
             ));
         }
     }

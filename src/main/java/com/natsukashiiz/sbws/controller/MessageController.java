@@ -1,7 +1,8 @@
 package com.natsukashiiz.sbws.controller;
 
 import com.natsukashiiz.sbws.entity.Message;
-import com.natsukashiiz.sbws.model.SendMessageRequest;
+import com.natsukashiiz.sbws.exception.BaseException;
+import com.natsukashiiz.sbws.model.request.SendMessageRequest;
 import com.natsukashiiz.sbws.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +18,7 @@ public class MessageController {
     private final MessageService messageService;
 
     @PostMapping("/send")
-    public Message sendMessage(@RequestBody SendMessageRequest request) {
+    public Message sendMessage(@RequestBody SendMessageRequest request) throws BaseException {
         return messageService.sendMessage(request);
     }
 }
